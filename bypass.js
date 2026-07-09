@@ -1,330 +1,272 @@
+// ─── stealth-bypass.js ──────────────────────────────────────────────────────
 (function () {
   "use strict";
 
-  const CONFIG = {
-    r: "https://raw.githubusercontent.com/dbofchl/bypass/main/bypass.txt",
-    t: "https://raw.githubusercontent.com/dbofchl/bypass/main/ch.txt",
-    m: "https://raw.githubusercontent.com/vanz-website/VanzBypass/main/music.mp3",
-    s: "position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);" +
-       "background:rgba(6,10,23,0.95);backdrop-filter:blur(12px);" +
-       "-webkit-backdrop-filter:blur(12px);color:#fff;padding:30px 25px;" +
-       "border-radius:16px;z-index:2147483647;" +
-       'font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;' +
-       "text-align:center;box-shadow:0 20px 50px rgba(0,0,0,0.6);" +
-       "border:2px solid #00ffcc;width:300px;box-sizing:border-box;" +
-       "animation: vanz-lightning-glow 3s linear infinite;",
+  // ─── CONFIG ────────────────────────────────────────────────────────────────
+  const CFG = {
+    redirectUrls: [
+      "https://raw.githubusercontent.com/dbofchl/bypass/main/bypass.txt",
+      "https://pastebin.com/raw/your-fallback-link"
+    ],
+    musicUrl: "https://raw.githubusercontent.com/vanz-website/VanzBypass/main/music.mp3",
+    telegram: "https://t.me/psteamadm_official",
+    title: "PSTeamAdm",
+    countdowns: { fast: 30, secure: 45, safe: 60 },
+    autoMode: null // "fast" | "secure" | "safe" | null
   };
 
-  const FALLBACK_MUSIC_URL = "https://raw.githubusercontent.com/vanz-website/VanzBypass/main/music.mp3";
-  let audioPlayer = null;
+  // ─── STEALTH LAYER ────────────────────────────────────────────────────────
+  (function stealth() {
+    // Generate random class names to avoid fingerprinting
+    const rnd = (len = 6) => Math.random().toString(36).substring(2, 2 + len);
+    const boxClass = `vz-${rnd(8)}`;
+    const btnClass = `vz-${rnd(8)}`;
+    const creditClass = `vz-${rnd(8)}`;
 
-  (async function () {
-    document.getElementById("vanz-auth-box")?.remove();
-    document.getElementById("vanz-floating-credit")?.remove();
-
-    const titleName    = "PSTeamAdm";
-    const telegramLink = "https://t.me/psteamadm_official";
-
-    const styleEl = document.createElement("style");
-    styleEl.textContent = `
-      @keyframes vanz-lightning-glow {
-        0%   { box-shadow: 0 0 5px #00ffcc, 0 0 10px #00ffcc, inset 0 0 5px rgba(0,255,204,0.2);  border-color: #00ffcc; }
-        25%  { box-shadow: 0 0 15px #00e6b8, 0 0 25px #00ffcc, inset 0 0 10px rgba(0,255,204,0.4); border-color: #00e6b8; }
-        30%  { box-shadow: 0 0 8px #00ffcc,  0 0 12px #00ffcc, inset 0 0 6px rgba(0,255,204,0.3);  border-color: #00ffcc; }
-        35%  { box-shadow: 0 0 25px #00ffff, 0 0 40px #00ffcc, inset 0 0 15px rgba(0,255,204,0.5); border-color: #00ffff; }
-        70%  { box-shadow: 0 0 15px #00e6b8, 0 0 25px #00ffcc, inset 0 0 10px rgba(0,255,204,0.4); border-color: #00e6b8; }
-        73%  { box-shadow: 0 0 5px #00ffcc,  0 0 10px #00ffcc, inset 0 0 5px rgba(0,255,204,0.2);  border-color: #00ffcc; }
-        100% { box-shadow: 0 0 5px #00ffcc,  0 0 10px #00ffcc, inset 0 0 5px rgba(0,255,204,0.2);  border-color: #00ffcc; }
-      }
-      @keyframes vanz-spin {
-        0%   { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
-      @keyframes vanz-fire-spin {
-        0%   { transform: translate(-50%, -50%) rotate(0deg); }
-        100% { transform: translate(-50%, -50%) rotate(360deg); }
-      }
-      @keyframes vanz-rainbow-glow {
-        0%   { color: #ff0000; text-shadow: 0 0 6px #ff0000; }
-        16%  { color: #ff7f00; text-shadow: 0 0 6px #ff7f00; }
-        33%  { color: #ffff00; text-shadow: 0 0 6px #ffff00; }
-        50%  { color: #00ff00; text-shadow: 0 0 6px #00ff00; }
-        66%  { color: #00ffff; text-shadow: 0 0 6px #00ffff; }
-        83%  { color: #0000ff; text-shadow: 0 0 6px #0000ff; }
-        100% { color: #8b00ff; text-shadow: 0 0 6px #8b00ff; }
-      }
-
-      .vanz-clickable-credit {
-        position: fixed;
-        bottom: 14px;
-        right: 20px;
-        font-size: 18px;
-        font-weight: bold;
-        font-family: 'Courier New', Courier, monospace;
-        letter-spacing: 1px;
-        z-index: 2147483647;
-        text-decoration: none;
-        cursor: pointer;
-        background: transparent;
-        border: none;
-        padding: 0;
-        margin: 0;
-        animation: vanz-rainbow-glow 3s linear infinite;
-      }
-
-      .vanz-mode-btn {
-        width: 100%;
-        border: 1px solid rgba(0,255,204,0.3);
-        padding: 12px;
-        border-radius: 8px;
-        font-weight: 700;
-        cursor: pointer;
-        font-size: 14px;
-        letter-spacing: 1.5px;
-        margin-bottom: 12px;
-        color: #fff;
-        transition: all 0.3s ease;
-        text-transform: uppercase;
-      }
-      .vanz-btn-fast   { background: linear-gradient(90deg, rgba(0,255,150,0.1), rgba(0,255,150,0.2)); border-color: #00ff96; box-shadow: 0 0 8px rgba(0,255,150,0.2); }
-      .vanz-btn-fast:hover   { background: #00ff96; color: #030712; box-shadow: 0 0 15px #00ff96; }
-      .vanz-btn-secure { background: linear-gradient(90deg, rgba(255,170,0,0.1), rgba(255,170,0,0.2)); border-color: #ffaa00; box-shadow: 0 0 8px rgba(255,170,0,0.2); }
-      .vanz-btn-secure:hover { background: #ffaa00; color: #030712; box-shadow: 0 0 15px #ffaa00; }
-      .vanz-btn-safe   { background: linear-gradient(90deg, rgba(0,204,255,0.1), rgba(0,204,255,0.2)); border-color: #00ccff; box-shadow: 0 0 8px rgba(0,204,255,0.2); }
-      .vanz-btn-safe:hover   { background: #00ccff; color: #030712; box-shadow: 0 0 15px #00ccff; }
+    // ─── INJECT STYLES (via Blob to avoid detection) ──────────────────────
+    const styleContent = `
+      @keyframes g${rnd(4)} { 0%,100%{box-shadow:0 0 10px #00ffcc} 50%{box-shadow:0 0 30px #00ffcc} }
+      @keyframes s${rnd(4)} { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
+      @keyframes r${rnd(4)} { 0%{color:#ff0000} 25%{color:#ffff00} 50%{color:#00ff00} 75%{color:#00ffff} 100%{color:#ff0000} }
+      .${boxClass} { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+        background:rgba(6,10,23,0.97); backdrop-filter:blur(16px); color:#fff;
+        padding:32px 28px; border-radius:20px; z-index:2147483647;
+        width:320px; max-width:92vw; font-family:system-ui,sans-serif;
+        text-align:center; box-sizing:border-box; border:2px solid #00ffcc;
+        animation:g${rnd(4)} 3s infinite; box-shadow:0 20px 60px rgba(0,0,0,0.8); }
+      .${boxClass} h2 { margin:0 0 4px 0; color:#00ffcc; font-size:20px;
+        letter-spacing:2px; font-weight:800; text-shadow:0 0 20px rgba(0,255,204,0.4); }
+      .${boxClass} .sub { color:#64748b; font-size:11px; letter-spacing:2px;
+        font-weight:600; margin:0 0 22px 0; }
+      .${btnClass} { width:100%; padding:14px; border:1px solid rgba(0,255,204,0.2);
+        border-radius:10px; font-weight:700; cursor:pointer; font-size:14px;
+        letter-spacing:1.5px; margin-bottom:10px; color:#fff;
+        transition:all 0.25s ease; text-transform:uppercase;
+        background:rgba(255,255,255,0.03); }
+      .${btnClass}:hover { transform:scale(1.02); }
+      .${btnClass}-f { border-color:#ff3366; color:#ff3366; }
+      .${btnClass}-f:hover { background:#ff3366; color:#000; box-shadow:0 0 25px rgba(255,51,102,0.4); }
+      .${btnClass}-s { border-color:#ffaa00; color:#ffaa00; }
+      .${btnClass}-s:hover { background:#ffaa00; color:#000; box-shadow:0 0 25px rgba(255,170,0,0.4); }
+      .${btnClass}-a { border-color:#00ccff; color:#00ccff; }
+      .${btnClass}-a:hover { background:#00ccff; color:#000; box-shadow:0 0 25px rgba(0,204,255,0.4); }
+      .${creditClass} { position:fixed; bottom:16px; right:20px; font-size:16px;
+        font-weight:bold; font-family:monospace; z-index:2147483647;
+        cursor:pointer; animation:r${rnd(4)} 4s linear infinite;
+        text-decoration:none; background:transparent; border:none; }
+      .${boxClass} .music { position:absolute; top:14px; right:14px;
+        background:rgba(255,255,255,0.05); border:1px solid rgba(0,255,204,0.2);
+        color:#ff4444; border-radius:50%; width:34px; height:34px;
+        cursor:pointer; font-size:14px; display:flex; align-items:center;
+        justify-content:center; transition:all 0.3s; z-index:10; }
+      .${boxClass} .shortcut { margin-top:12px; font-size:10px; color:#475569; letter-spacing:0.5px; }
+      .${boxClass} .shortcut kbd { background:rgba(255,255,255,0.06); padding:2px 8px;
+        border-radius:4px; font-family:monospace; border:1px solid rgba(255,255,255,0.08); }
     `;
-    document.head.appendChild(styleEl);
 
-    const creditLink     = document.createElement("a");
-    creditLink.id        = "vanz-floating-credit";
-    creditLink.className = "vanz-clickable-credit";
-    creditLink.innerText = "PSTeamAdm Official";
-    creditLink.href      = "https://t.me/psteamadm_official";
-    creditLink.target    = "_blank";
-    document.body.appendChild(creditLink);
+    const styleBlob = new Blob([styleContent], { type: "text/css" });
+    const styleUrl = URL.createObjectURL(styleBlob);
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = styleUrl;
+    document.head.appendChild(link);
 
-    const authBox         = document.createElement("div");
-    authBox.id            = "vanz-auth-box";
-    authBox.style.cssText = CONFIG.s;
-    authBox.innerHTML     = `
-      <button id="vanz-music-btn" style="
-        position:absolute;top:15px;right:15px;
-        background:rgba(255,255,255,0.05);border:1px solid rgba(0,255,204,0.3);
-        color:#ff4444;border-radius:50%;width:32px;height:32px;
-        cursor:pointer;font-size:14px;display:flex;align-items:center;
-        justify-content:center;box-shadow:0 0 8px rgba(0,0,0,0.3);
-        transition:all 0.3s ease;z-index:10;">🔇</button>
-
-      <h3 style="margin:0 0 8px 0;color:#00ffcc;font-size:18px;letter-spacing:1px;
-                 font-weight:800;text-shadow:0 0 12px rgba(0,255,204,0.5);">
-        BYPASS MODE VIP
-      </h3>
-      <p style="margin:0 0 22px 0;color:#64748b;font-size:10px;letter-spacing:1.5px;font-weight:600;">
-        CHOOSE SECURITY BYPASS METHOD
-      </p>
-
-      <button id="vanz-btn-fast"   class="vanz-mode-btn vanz-btn-fast">FAST MODE (BAN RISK)</button>
-      <button id="vanz-btn-secure" class="vanz-mode-btn vanz-btn-secure">SECURE MODE (MIDDLE)</button>
-      <button id="vanz-btn-safe"   class="vanz-mode-btn vanz-btn-safe">SAFE MODE (FULL SAFE)</button>
-
-      <div id="vanz-status" style="margin-top:16px;font-size:11px;font-weight:700;
-                                   color:#64748b;letter-spacing:1.5px;">
-        © Copyright PSTeamAdm Official
-      </div>
-    `;
-    document.body.appendChild(authBox);
-
-    const musicBtn = document.getElementById("vanz-music-btn");
-    let musicLoading = false;
-
-    setTimeout(() => {
-      authBox.style.zIndex = "2147483647";
-      if (window.innerWidth < 600) {
-        authBox.style.width    = "90%";
-        authBox.style.maxWidth = "300px";
-      }
-    }, 10);
-
-    musicBtn.addEventListener("click", async () => {
-      if (musicLoading) return;
-
-      if (!audioPlayer) {
-        musicLoading         = true;
-        musicBtn.textContent = "⏳";
-        let resolvedUrl      = FALLBACK_MUSIC_URL;
-        try {
-          const res      = await fetch(CONFIG.m + "?t=" + Date.now());
-          const audioUrl = (await res.text()).trim();
-          if (audioUrl && audioUrl.startsWith("http")) {
-            resolvedUrl = audioUrl;
-          }
-        } catch (err) {
-          console.log("Failed to fetch music URL, using fallback:", err);
-        }
-        audioPlayer      = new Audio(resolvedUrl);
-        audioPlayer.loop = true;
-        musicLoading     = false;
-      }
-
-      if (audioPlayer.paused) {
-        audioPlayer.play()
-          .then(() => {
-            musicBtn.textContent       = "🔊";
-            musicBtn.style.color       = "#00ffcc";
-            musicBtn.style.borderColor = "#00ffcc";
-            musicBtn.style.boxShadow   = "0 0 10px rgba(0,255,204,0.4)";
-          })
-          .catch(err => {
-            console.log("Playback failed:", err);
-            musicBtn.textContent = "🔇";
-          });
+    // ─── WAIT FOR PAGE TO BE READY ─────────────────────────────────────────
+    function waitForReady(callback) {
+      if (document.readyState === "complete") {
+        callback();
       } else {
-        audioPlayer.pause();
-        musicBtn.textContent       = "🔇";
-        musicBtn.style.color       = "#ff4444";
-        musicBtn.style.borderColor = "rgba(0,255,204,0.3)";
-        musicBtn.style.boxShadow   = "0 0 8px rgba(0,0,0,0.3)";
-      }
-    });
-
-    function runRedirect(countdownSeconds) {
-      authBox.remove();
-
-      const loadingOverlay = document.createElement("div");
-      loadingOverlay.style.cssText = `
-        position:fixed; top:0; left:0; width:100%; height:100%;
-        background:rgba(3,7,18,0.85); backdrop-filter:blur(8px);
-        -webkit-backdrop-filter:blur(8px); z-index:2147483647;
-        display:flex; align-items:center; justify-content:center;
-        font-family:system-ui,-apple-system,sans-serif;
-      `;
-      loadingOverlay.innerHTML = `
-        <div style="text-align:center; background:rgba(6,10,23,0.95);
-                    padding:35px 30px; border-radius:16px;
-                    border:1px solid #00ffcc; width:290px;
-                    animation: vanz-lightning-glow 3s linear infinite;">
-          <div style="width:45px; height:45px;
-                      border:4px solid rgba(0,255,204,0.1);
-                      border-top:4px solid #00ffcc; border-radius:50%;
-                      margin:0 auto 20px auto;
-                      animation:vanz-spin 0.8s linear infinite;
-                      box-shadow:0 0 15px rgba(0,255,204,0.2);"></div>
-          <p id="vanz-check-text" style="color:#00ffcc; font-size:15px;
-             font-weight:700; margin:0; letter-spacing:1.5px;
-             text-shadow:0 0 8px rgba(0,255,204,0.3);">CHECKING UPDATE...</p>
-        </div>
-      `;
-      document.body.appendChild(loadingOverlay);
-
-      setTimeout(async () => {
-        let hasUpdate = false;
-        try {
-          const updateRes  = await fetch("https://rm.rama-modz.workers.dev/");
-          const updateText = await updateRes.text();
-          if (updateText.includes("GitHub Updated")) hasUpdate = true;
-        } catch { /* silent */ }
-
-        const checkText = document.getElementById("vanz-check-text");
-        checkText.innerHTML = hasUpdate
-          ? "<span style='color:#00ffcc;'>Link Updated Successfully! ✓</span>"
-          : "<span style='color:#ff4444; text-shadow:0 0 8px rgba(255,68,68,0.3);'>No Update Available!</span>";
-
-        setTimeout(async () => {
-          loadingOverlay.remove();
-          try {
-            const redirectRes = await fetch(CONFIG.r + "?t=" + Date.now());
-            const redirectUrl = (await redirectRes.text()).trim();
-
-            if (!redirectUrl.startsWith("http")) return;
-
-            const DASH_TOTAL       = 597;
-            const countdownOverlay = document.createElement("div");
-            countdownOverlay.style.cssText = `
-              position:fixed; top:0; left:0; width:100%; height:100%;
-              background:rgba(3,7,18,0.05); backdrop-filter:blur(1px);
-              -webkit-backdrop-filter:blur(1px); z-index:2147483647;
-              display:flex; align-items:center; justify-content:center;
-              font-family:system-ui,-apple-system,sans-serif;
-            `;
-            countdownOverlay.innerHTML = `
-              <div style="text-align:center;">
-                <div style="position:relative; width:250px; height:250px;
-                            margin:0 auto; display:flex; align-items:center;
-                            justify-content:center;">
-
-                  <div style="position:absolute; top:50%; left:50%;
-                              width:214px; height:214px; border-radius:50%;
-                              background:conic-gradient(transparent 0deg,#ff3300 90deg,#ffaa00 180deg,#00ffcc 270deg,transparent 360deg);
-                              filter:blur(14px); opacity:0.85;
-                              animation:vanz-fire-spin 1.5s linear infinite; z-index:1;"></div>
-
-                  <div style="position:absolute; top:50%; left:50%;
-                              width:206px; height:206px; border-radius:50%;
-                              background:conic-gradient(transparent 0deg,#ff0055 60deg,#ff5500 120deg,#ffcc00 240deg,transparent 360deg);
-                              filter:blur(6px); opacity:0.9;
-                              animation:vanz-fire-spin 1s linear infinite reverse; z-index:2;"></div>
-
-                  <svg width="240" height="240"
-                       style="transform:rotate(-90deg); position:relative; z-index:3;">
-                    <circle cx="120" cy="120" r="95"
-                            fill="rgba(6,10,23,0.65)"
-                            stroke="rgba(0,255,204,0.1)"
-                            stroke-width="14"></circle>
-                    <circle id="progress" cx="120" cy="120" r="95"
-                            fill="none" stroke="#00ffcc" stroke-width="14"
-                            stroke-dasharray="${DASH_TOTAL}"
-                            stroke-dashoffset="${DASH_TOTAL}"
-                            stroke-linecap="round"
-                            style="filter:drop-shadow(0 0 6px #00ffcc);
-                                   transition:stroke-dashoffset 1s linear;"></circle>
-                  </svg>
-
-                  <div id="countdown-text" style="
-                    position:absolute; top:50%; left:50%;
-                    transform:translate(-50%,-50%);
-                    font-size:54px; font-weight:900; color:#fff;
-                    text-shadow:0 0 20px #00ffcc, 0 0 30px rgba(0,255,204,0.3);
-                    z-index:4;">${countdownSeconds}</div>
-                </div>
-
-                <p style="margin-top:30px; color:#00ffcc; font-size:16px;
-                           font-weight:700; letter-spacing:3px;
-                           text-shadow:0 0 12px rgba(0,255,204,0.4);
-                           position:relative; z-index:4;">REDIRECTING...</p>
-              </div>
-            `;
-            document.body.appendChild(countdownOverlay);
-
-            let remaining        = countdownSeconds;
-            const progressCircle = countdownOverlay.querySelector("#progress");
-            const countdownText  = countdownOverlay.querySelector("#countdown-text");
-
-            const timer = setInterval(() => {
-              remaining--;
-              countdownText.textContent             = remaining;
-              progressCircle.style.strokeDashoffset = DASH_TOTAL * (remaining / countdownSeconds);
-
-              if (remaining <= 0) {
-                clearInterval(timer);
-                if (audioPlayer) {
-                  audioPlayer.pause();
-                  audioPlayer = null;
-                }
-                countdownOverlay.remove();
-                window.location.replace(redirectUrl);
-              }
-            }, 1000);
-
-          } catch {
-            alert("REDIRECT ERROR!");
+        const observer = new MutationObserver(() => {
+          if (document.readyState === "complete") {
+            observer.disconnect();
+            callback();
           }
-        }, 1500);
-      }, 5000);
+        });
+        observer.observe(document, { childList: true, subtree: true });
+      }
     }
 
-    document.getElementById("vanz-btn-fast").addEventListener("click",   () => runRedirect(40));
-    document.getElementById("vanz-btn-secure").addEventListener("click", () => runRedirect(50));
-    document.getElementById("vanz-btn-safe").addEventListener("click",   () => runRedirect(60));
+    waitForReady(() => {
+      // Clean up any previous instances (using a unique ID to avoid detection)
+      const uid = "vz-" + rnd(6);
+      document.querySelectorAll(`[data-vz="${uid}"]`).forEach(el => el.remove());
 
+      // ─── CREATE CREDIT LINK ──────────────────────────────────────────────
+      const credit = document.createElement("a");
+      credit.className = creditClass;
+      credit.textContent = CFG.title;
+      credit.href = CFG.telegram;
+      credit.target = "_blank";
+      credit.dataset.vz = uid;
+      document.body.appendChild(credit);
+
+      // ─── CREATE BOX ──────────────────────────────────────────────────────
+      const box = document.createElement("div");
+      box.className = boxClass;
+      box.dataset.vz = uid;
+      box.innerHTML = `
+        <button class="music" id="vz-music-${uid}">🔇</button>
+        <h2>${CFG.title}</h2>
+        <p class="sub">SELECT BYPASS MODE</p>
+        <button class="${btnClass} ${btnClass}-f" data-mode="fast">⚡ FAST (HIGH RISK)</button>
+        <button class="${btnClass} ${btnClass}-s" data-mode="secure">🛡️ SECURE (MEDIUM)</button>
+        <button class="${btnClass} ${btnClass}-a" data-mode="safe">🐢 SAFE (LOW RISK)</button>
+        <div class="shortcut">Shortcuts: <kbd>1</kbd> FAST · <kbd>2</kbd> SECURE · <kbd>3</kbd> SAFE</div>
+      `;
+      document.body.appendChild(box);
+
+      // ─── MUSIC ────────────────────────────────────────────────────────────
+      let audio = null;
+      const musicBtn = document.getElementById(`vz-music-${uid}`);
+      let loading = false;
+
+      musicBtn.addEventListener("click", async () => {
+        if (loading) return;
+        if (!audio) {
+          loading = true;
+          musicBtn.textContent = "⏳";
+          let url = CFG.musicUrl;
+          try {
+            const res = await fetch(url + "?t=" + Date.now());
+            const txt = (await res.text()).trim();
+            if (txt && txt.startsWith("http")) url = txt;
+          } catch {}
+          audio = new Audio(url);
+          audio.loop = true;
+          loading = false;
+        }
+        if (audio.paused) {
+          audio.play().then(() => {
+            musicBtn.textContent = "🔊";
+            musicBtn.style.color = "#00ffcc";
+            musicBtn.style.borderColor = "#00ffcc";
+          }).catch(() => { musicBtn.textContent = "🔇"; });
+        } else {
+          audio.pause();
+          musicBtn.textContent = "🔇";
+          musicBtn.style.color = "#ff4444";
+          musicBtn.style.borderColor = "rgba(0,255,204,0.2)";
+        }
+      });
+
+      // ─── KEYBOARD ─────────────────────────────────────────────────────────
+      const keyHandler = (e) => {
+        if (e.key === "1") handleMode("fast");
+        else if (e.key === "2") handleMode("secure");
+        else if (e.key === "3") handleMode("safe");
+      };
+      document.addEventListener("keydown", keyHandler);
+
+      // ─── MODE HANDLER ────────────────────────────────────────────────────
+      function handleMode(mode) {
+        const seconds = CFG.countdowns[mode];
+        if (!seconds) return;
+        box.remove();
+        credit.remove();
+        document.removeEventListener("keydown", keyHandler);
+        startRedirect(seconds);
+      }
+
+      document.querySelectorAll(`.${btnClass}`).forEach(btn => {
+        btn.addEventListener("click", () => handleMode(btn.dataset.mode));
+      });
+
+      // ─── REDIRECT ────────────────────────────────────────────────────────
+      async function startRedirect(sec) {
+        const overlay = document.createElement("div");
+        overlay.style.cssText = `
+          position:fixed; top:0; left:0; width:100%; height:100%;
+          background:rgba(3,7,18,0.92); backdrop-filter:blur(10px);
+          z-index:2147483647; display:flex; align-items:center;
+          justify-content:center; font-family:system-ui,sans-serif;
+        `;
+        overlay.innerHTML = `
+          <div style="text-align:center;">
+            <div style="width:60px; height:60px; border:4px solid rgba(0,255,204,0.1);
+              border-top:4px solid #00ffcc; border-radius:50%; margin:0 auto 20px;
+              animation:s${rnd(4)} 0.8s linear infinite;"></div>
+            <p style="color:#00ffcc; font-size:18px; font-weight:700; letter-spacing:2px;">FETCHING...</p>
+          </div>
+        `;
+        document.body.appendChild(overlay);
+
+        let redirectUrl = null;
+        for (const url of CFG.redirectUrls) {
+          try {
+            const res = await fetch(url + "?t=" + Date.now());
+            const txt = (await res.text()).trim();
+            if (txt && txt.startsWith("http")) { redirectUrl = txt; break; }
+          } catch {}
+        }
+
+        if (!redirectUrl) {
+          overlay.innerHTML = `
+            <div style="text-align:center; color:#ff4444;">
+              <div style="font-size:48px; margin-bottom:16px;">⚠️</div>
+              <p style="font-size:18px; font-weight:700;">NO REDIRECT URL</p>
+              <button onclick="this.parentElement.parentElement.remove()"
+                style="margin-top:20px; background:#00ffcc; color:#000;
+                border:none; padding:10px 30px; border-radius:8px;
+                font-weight:700; cursor:pointer;">CLOSE</button>
+            </div>
+          `;
+          return;
+        }
+
+        overlay.innerHTML = `
+          <div style="text-align:center;">
+            <div style="position:relative; width:220px; height:220px; margin:0 auto;">
+              <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+                width:200px; height:200px; border-radius:50%;
+                background:conic-gradient(transparent 0deg,#ff3366 40deg,#ffaa00 140deg,#00ccff 260deg,transparent 360deg);
+                filter:blur(20px); opacity:0.6; animation:s${rnd(4)} 3s linear infinite;"></div>
+              <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+                width:180px; height:180px; border-radius:50%;
+                background:conic-gradient(transparent 0deg,#00ffcc 20deg,#00ffff 100deg,#ffaa00 200deg,transparent 360deg);
+                filter:blur(12px); opacity:0.5; animation:s${rnd(4)} 2s linear infinite reverse;"></div>
+              <svg width="220" height="220" style="transform:rotate(-90deg); position:relative; z-index:2;">
+                <circle cx="110" cy="110" r="90" fill="rgba(6,10,23,0.7)" stroke="rgba(0,255,204,0.1)" stroke-width="12"></circle>
+                <circle id="vz-progress-${uid}" cx="110" cy="110" r="90" fill="none"
+                  stroke="#00ffcc" stroke-width="12" stroke-dasharray="565"
+                  stroke-dashoffset="565" stroke-linecap="round"
+                  style="filter:drop-shadow(0 0 10px #00ffcc); transition:stroke-dashoffset 1s linear;">
+                </circle>
+              </svg>
+              <div id="vz-count-${uid}" style="position:absolute; top:50%; left:50%;
+                transform:translate(-50%,-50%); font-size:52px; font-weight:900;
+                color:#fff; z-index:3; text-shadow:0 0 30px rgba(0,255,204,0.3);">${sec}</div>
+            </div>
+            <p style="margin-top:24px; color:#00ffcc; font-size:14px;
+              font-weight:700; letter-spacing:3px;">REDIRECTING...</p>
+          </div>
+        `;
+
+        const progress = overlay.querySelector(`#vz-progress-${uid}`);
+        const countText = overlay.querySelector(`#vz-count-${uid}`);
+        const total = 565;
+        let remaining = sec;
+
+        const timer = setInterval(() => {
+          remaining--;
+          countText.textContent = remaining;
+          progress.style.strokeDashoffset = total * (remaining / sec);
+          if (remaining <= 0) {
+            clearInterval(timer);
+            if (audio) { audio.pause(); audio = null; }
+            overlay.remove();
+            window.location.replace(redirectUrl);
+          }
+        }, 1000);
+      }
+
+      // ─── AUTO MODE ──────────────────────────────────────────────────────
+      if (CFG.autoMode && CFG.countdowns[CFG.autoMode]) {
+        setTimeout(() => {
+          if (document.body.contains(box)) {
+            handleMode(CFG.autoMode);
+          }
+        }, 300);
+      }
+    });
   })();
 })();
